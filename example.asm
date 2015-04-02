@@ -29,22 +29,35 @@ section .data
 section .bss
 
 section .text
-  DEBUG:      db 27,"[0;32m"
+  DEBUG:      db 27,"[0;90m"
   DEBUG_LEN   equ $-DEBUG
   INFO:       db 27,"[0;32m"
   INFO_LEN    equ $-INFO
-  WARN:       db 27,"[0;32m"
+  WARN:       db 27,"[0;91m"
   WARN_LEN    equ $-WARN
-  ERROR:      db 27,"[0;32m"
+  ERROR:      db 27,"[0;31m"
   ERROR_LEN   equ $-ERROR
   CLOSE:      db 27,"[0m"
   CLOSE_LEN   equ $-CLOSE
 
-  FIRSTMSG : db 27,"[0;32mLogging this Message", 27, "[0m",10,0
-  FIRSTLEN  equ $-FIRSTMSG
-  SECONDMSG: db "Logging this Message"
-  SECONDLEN  equ $-SECONDMSG
-  THIRDMSG: db "Logging this Message with 0 terminator",0
+  LOGMSG: db "Logging this Message",10,0
+  LOGLEN  equ $-LOGMSG
+
+%macro log_debug 2
+  _sys_write DEBUG, DEBUG_LEN
+  _sys_write %1, %2
+  _sys_write CLOSE, CLOSE_LEN
+%endmacro
+
+%macro log_debug 1
+  _push_all eax, ecx, edx
+  mov ecx, %1
+  call strlen
+
+  log_debug %1, edx
+
+  _pop_all eax, ecx, edx
+%endmacro
 
 %macro log_info 2
   _sys_write INFO, INFO_LEN
@@ -52,25 +65,89 @@ section .text
   _sys_write CLOSE, CLOSE_LEN
 %endmacro
 
+%macro log_info 1
+  _push_all eax, ecx, edx
+  mov ecx, %1
+  call strlen
+
+  log_info %1, edx
+
+  _pop_all eax, ecx, edx
+%endmacro
+
+%macro log_warn 2
+  _sys_write WARN, WARN_LEN
+  _sys_write %1, %2
+  _sys_write CLOSE, CLOSE_LEN
+%endmacro
+
+%macro log_warn 1
+  _push_all eax, ecx, edx
+  mov ecx, %1
+  call strlen
+
+  log_warn %1, edx
+
+  _pop_all eax, ecx, edx
+%endmacro
+
+%macro log_error 2
+  _sys_write ERROR, ERROR_LEN
+  _sys_write %1, %2
+  _sys_write CLOSE, CLOSE_LEN
+%endmacro
+
+%macro log_error 1
+  _push_all eax, ecx, edx
+  mov ecx, %1
+  call strlen
+
+  log_error %1, edx
+
+  _pop_all eax, ecx, edx
+%endmacro
+
+; --------------------------------------------------------------
+; strlen
+;   determines length of given string
+;
+; ARGS:
+;   ecx:  address of the string whose length to determine
+;         string needs to end with 0 terminator (ala C strings)
+; RETURNS:
+;   edx:  the length of the string including the 0 terminator
+; --------------------------------------------------------------
+strlen:
+  push eax
+
+  xor edx, edx
+  xor eax, eax
+  .until_null_terminator:
+    mov al, byte [ ecx + edx ]
+    inc edx
+    cmp al, 0x0
+    jnz .until_null_terminator
+
+  pop eax
+  ret
+
 global _start
 
 _start:
   nop
 
-  ;log_info SECONDMSG, SECONDLEN
-  mov ecx, THIRDMSG
-  xor edx, edx
-  xor eax, eax
+  ; supplying len
+  log_debug LOGMSG
+  log_info LOGMSG
+  log_warn LOGMSG
+  log_error LOGMSG
 
-.until_null_terminator:
-  mov al, byte [ ecx + edx ]
-  inc edx
-  cmp al, 0x0
-  jnz .until_null_terminator
-
-  log_info ecx, edx
-
-
+  ; since LOGMSG is 0 terminated we can omit len
+  ; (slightly slower though)
+  log_debug LOGMSG, LOGLEN
+  log_info LOGMSG, LOGLEN
+  log_warn LOGMSG, LOGLEN
+  log_error LOGMSG, LOGLEN
 
 .exit:
   mov eax, 1      ; exit with code zero

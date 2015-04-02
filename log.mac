@@ -1,0 +1,111 @@
+; vim: ft=nasm
+
+%ifndef _logasm_log_mac_
+%define _logasm_log_mac_
+
+extern strlen
+
+section .text
+  DEBUG:      db 27,"[0;90m"
+  DEBUG_LEN   equ $-DEBUG
+  INFO:       db 27,"[0;32m"
+  INFO_LEN    equ $-INFO
+  WARN:       db 27,"[0;91m"
+  WARN_LEN    equ $-WARN
+  ERROR:      db 27,"[0;31m"
+  ERROR_LEN   equ $-ERROR
+  CLOSE:      db 27,"[0m"
+  CLOSE_LEN   equ $-CLOSE
+  NEWLINE     db 10
+  NEWLINE_LEN equ $-NEWLINE
+
+%macro log_data 0
+  LOG__FILE:     db " ", __FILE__,0
+  LOG__FILE_LEN  equ $-LOG__FILE
+%endmacro
+
+%macro log__push_all 1-*
+  %rep %0
+    push %1
+    %rotate 1
+  %endrep
+%endmacro
+
+%macro log__pop_all 1-*
+  %rep %0
+    %rotate -1
+    pop %1
+  %endrep
+%endmacro
+
+%macro log__sys_write 2 ;(s, len)
+  log__push_all eax, ebx, ecx, edx
+  mov eax, 4
+  mov ebx, 1
+  mov edx, %2
+  mov ecx, %1
+  int 80H
+  log__pop_all eax, ebx, ecx, edx
+%endmacro
+
+%macro log_debug 2
+  log__sys_write DEBUG, DEBUG_LEN
+  log__sys_write %1, %2
+  log__sys_write CLOSE, CLOSE_LEN
+  log__sys_write NEWLINE, NEWLINE_LEN
+%endmacro
+
+%macro log_debug 1
+  log__push_all esi, ecx
+  mov esi, %1
+  call strlen
+  log_debug %1, ecx
+  log__pop_all esi, ecx
+%endmacro
+
+%macro log_info 2
+  log__sys_write INFO, INFO_LEN
+  log__sys_write %1, %2
+  log__sys_write CLOSE, CLOSE_LEN
+  log__sys_write NEWLINE, NEWLINE_LEN
+%endmacro
+
+%macro log_info 1
+  log__push_all esi, ecx
+  mov esi, %1
+  call strlen
+  log_info %1, ecx
+  log__pop_all esi, ecx
+%endmacro
+
+%macro log_warn 2
+  log__sys_write WARN, WARN_LEN
+  log__sys_write %1, %2
+  log__sys_write CLOSE, CLOSE_LEN
+  log__sys_write NEWLINE, NEWLINE_LEN
+%endmacro
+
+%macro log_warn 1
+  log__push_all esi, ecx
+  mov esi, %1
+  call strlen
+  log_warn %1, ecx
+  log__pop_all esi, ecx
+%endmacro
+
+%macro log_error 2
+  log__sys_write ERROR, ERROR_LEN
+  log__sys_write %1, %2
+  log__sys_write CLOSE, CLOSE_LEN
+  log__sys_write NEWLINE, NEWLINE_LEN
+%endmacro
+
+%macro log_error 1
+  log__push_all esi, ecx
+  mov esi, %1
+  call strlen
+  log_error %1, ecx
+  log__pop_all esi, ecx
+%endmacro
+
+%endif

@@ -1,24 +1,17 @@
 # executable is named same as current directory
-EXEC=example
+EXEC=x
 SRCS=$(EXEC).asm
-OBJS=$(EXEC).o
+LIB_STR_SRCS=$(filter-out ./lib/str/x.asm, $(wildcard ./lib/str/*.asm))
 
-# dwarf info is more powerful but to start out stabs is good as well
-DBGI=dwarf
-# DBGI=stabs
+SRCS+=$(LIB_STR_SRCS)
+OBJS=$(subst .asm,.o, $(SRCS))
 
 all: $(EXEC)
 
-lldb: clean $(EXEC)
-	lldb -- $(EXEC)
+test: all
+	@./$(EXEC)
 
-$(OBJS): $(SRCS)
-	@nasm -f elf32 -g -F $(DBGI) $^ 
+pre_strlen: lib/strlen.asm
+	nasm -e -f $(NASM_FMT) -g -F $(DBGI) $< -o $@ > pre_strlen.asm
 
-$(EXEC): $(OBJS)
-	@ld -melf_i386 -o $@ $^ 
-
-clean:
-	@rm -f $(OBJS) $(EXEC)
-
-.PHONY: all clean lldb
+include ./common.mk

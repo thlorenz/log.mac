@@ -28,48 +28,54 @@ strlen:
   pop   eax                     ; restore eax
   ret
 
-%ifenv STRLEN
-  %macro _sys_write 2
-    mov eax, 4
-    mov ebx, 1
-    mov ecx, %1
-    mov edx, %2
-    int 80H
-  %endmacro
+;-------+
+; TESTS ;
+;-------+
 
-  section .data
+%ifenv strlen
 
-  SAMPLEMSG:   db "0123456789",0
-  SAMPLELEN    equ $-SAMPLEMSG
-  STRLEN       equ SAMPLELEN-1
+%macro _sys_write 2
+  mov eax, 4
+  mov ebx, 1
+  mov ecx, %1
+  mov edx, %2
+  int 80H
+%endmacro
 
-  FAILMSG:  db "FAILED!",10,0
-  FAILLEN   equ $-FAILMSG
-  PASSMSG:  db "PASSED!",10,0
-  PASSLEN   equ $-PASSMSG
+section .data
 
-  section .text
+SAMPLEMSG:   db "0123456789",0
+SAMPLELEN    equ $-SAMPLEMSG
+STRLEN       equ SAMPLELEN-1
 
-  global _start
+FAILMSG:  db "FAILED!",10,0
+FAILLEN   equ $-FAILMSG
+PASSMSG:  db "PASSED!",10,0
+PASSLEN   equ $-PASSMSG
 
-  _start:
-    nop
+section .text
 
-    mov esi, SAMPLEMSG
-    call strlen
+global _start
 
-    cmp ecx, STRLEN
+_start:
+  nop
 
-    jz .pass
+  mov esi, SAMPLEMSG
+  call strlen
 
-  .fail:
-    _sys_write FAILMSG, FAILLEN
-    mov ebx, 1
-    jmp .exit
-  .pass:
-    _sys_write PASSMSG, PASSLEN
-    mov ebx, 0
-  .exit:
-    mov eax, 1
-    int 80H
+  cmp ecx, STRLEN
+
+  jz .pass
+
+.fail:
+  _sys_write FAILMSG, FAILLEN
+  mov ebx, 1
+  jmp .exit
+.pass:
+  _sys_write PASSMSG, PASSLEN
+  mov ebx, 0
+.exit:
+  mov eax, 1
+  int 80H
+
 %endif

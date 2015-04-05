@@ -13,8 +13,10 @@ endif
 
 DBGI=dwarf
 
-ifdef STRLEN
+ifdef strlen
 	TASK=strlen
+else ifdef hex2decimal
+	TASK=hex2decimal
 else
 	TASK=help
 endif
@@ -29,6 +31,9 @@ gdb: clean $(EXEC)
 	@nasm -f $(NASM_FMT) -g -F $(DBGI) $< -o $@
 
 strlen: strlen.o
+	@ld -m $(LD_EMM) -o $@ $^
+
+hex2decimal: hex2decimal.o
 	@ld -m $(LD_EMM) -o $@ $^
 
 help:

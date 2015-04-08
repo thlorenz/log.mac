@@ -4,20 +4,29 @@
 %define _logasm_log_mac_
 
 extern strlen
+extern hex2decimal
+
+section .bss
+  LINEBUFFER resb 32
+
 
 section .text
-  DEBUG:      db 27,"[0;90m"
-  DEBUG_LEN   equ $-DEBUG
-  INFO:       db 27,"[0;32m"
-  INFO_LEN    equ $-INFO
-  WARN:       db 27,"[0;91m"
-  WARN_LEN    equ $-WARN
-  ERROR:      db 27,"[0;31m"
-  ERROR_LEN   equ $-ERROR
-  CLOSE:      db 27,"[0m"
-  CLOSE_LEN   equ $-CLOSE
-  NEWLINE     db 10
-  NEWLINE_LEN equ $-NEWLINE
+  DEBUG:        db 27,"[0;34m"
+  DEBUG_LEN     equ $-DEBUG
+  INFO:         db 27,"[0;32m"
+  INFO_LEN      equ $-INFO
+  WARN:         db 27,"[0;91m"
+  WARN_LEN      equ $-WARN
+  ERROR:        db 27,"[0;31m"
+  ERROR_LEN     equ $-ERROR
+  LOCATION:     db 27,"[0;90m"
+  LOCATION_LEN  equ $-LOCATION
+  CLOSE:        db 27,"[0m"
+  CLOSE_LEN     equ $-CLOSE
+  NEWLINE       db 10
+  NEWLINE_LEN   equ $-NEWLINE
+  COLON:        db ":"
+  COLON_LEN     equ $-COLON
 
 %macro log_data 0
   LOG__FILE:     db " ", __FILE__,0
@@ -48,12 +57,34 @@ section .text
   log__pop_all eax, ebx, ecx, edx
 %endmacro
 
+%macro log__location 0
+  log__push_all eax, ebx, ecx, edx, esi
+
+  log__sys_write LOCATION, LOCATION_LEN
+  log__sys_write LOG__FILE, LOG__FILE_LEN
+  log__sys_write COLON, COLON_LEN
+
+  mov eax, __LINE__
+  mov esi, LINEBUFFER + 32
+  call hex2decimal
+
+  ; write out lineno which is @edx
+  mov eax, 4
+  mov ebx, 1
+  mov ecx, esi
+  int 80H
+
+  log__sys_write CLOSE, CLOSE_LEN
+  log__pop_all eax, ebx, ecx, edx, esi
+%endmacro
+
 %macro log_debug 2
   log__sys_write DEBUG, DEBUG_LEN
   log__sys_write %1, %2
   log__sys_write CLOSE, CLOSE_LEN
-  log__sys_write LOG__FILE, LOG__FILE_LEN
+  log__location
   log__sys_write NEWLINE, NEWLINE_LEN
+
 %endmacro
 
 %macro log_debug 1
@@ -68,6 +99,7 @@ section .text
   log__sys_write INFO, INFO_LEN
   log__sys_write %1, %2
   log__sys_write CLOSE, CLOSE_LEN
+  log__location
   log__sys_write NEWLINE, NEWLINE_LEN
 %endmacro
 
@@ -83,6 +115,7 @@ section .text
   log__sys_write WARN, WARN_LEN
   log__sys_write %1, %2
   log__sys_write CLOSE, CLOSE_LEN
+  log__location
   log__sys_write NEWLINE, NEWLINE_LEN
 %endmacro
 
@@ -98,6 +131,7 @@ section .text
   log__sys_write ERROR, ERROR_LEN
   log__sys_write %1, %2
   log__sys_write CLOSE, CLOSE_LEN
+  log__location
   log__sys_write NEWLINE, NEWLINE_LEN
 %endmacro
 

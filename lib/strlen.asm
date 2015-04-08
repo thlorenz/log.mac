@@ -6,27 +6,48 @@ section .text
 ;   determines length of given string (not counting the 0 terminator)
 ;
 ; ARGS:
-;   esi:  address of the string whose length to determine
+;   edi:  address of the string whose length to determine
 ;         string needs to end with 0 terminator (ala C strings)
 ; RETURNS:
-;   ecx:  the length of the string including the 0 terminator
+;   edx:  the length of the string including the 0 terminator
 ; --------------------------------------------------------------
   global strlen
 strlen:
 
   push  eax
-  push  esi
-  mov   ecx, esi                ; save start of string in ecx
-.until_null_terminator:
-  lodsb                         ; load byte at esi into al (auto increments esi)
-  or    al, al                  ; same as 'cmp al, 0'
-  jnz   .until_null_terminator
-  dec   esi                     ; don't count 0 terminator
-  sub   esi, ecx                ; esi = end - start (len)
-  pop   ecx                     ; ecx = start
-  xchg  esi, ecx                ; esi = start, ecx = len
-  pop   eax                     ; restore eax
+  push  ecx
+  push  edi
+
+  xor   eax, eax          ; we are searching for 0
+  mov   ecx, 0000ffffh    ; expecting strings no longer than 65535 bytes
+  cld                     ; search upwards in memory
+
+  repne scasb             ; read starting at edi until we find 0 or run out of bytes
+  jnz    .fail
+
+  mov   edx, 0000fffeh    ; ecx was decremented each time (one too many since it includes 0 terminator)
+  sub   edx, ecx          ; so substracting from original (ecx - 1) gets us the string length
+
+  pop   edi
+  pop   ecx
+  pop   eax
+
   ret
+
+.fail:
+  mov eax, 4              ; log error
+  mov ebx, 1
+  mov ecx, ENDNOTFOUNDMSG
+  mov edx, ENDNOTFOUNDLEN
+  int 80H
+
+  mov eax, 1              ; exit with code 1
+  mov ebx, 1
+  int 80H
+
+section .data
+  ENDNOTFOUNDMSG: db "FATAL: Unable to find end of string, max size exceeded"
+  ENDNOTFOUNDLEN  equ $-ENDNOTFOUNDMSG
 
 ;-------+
 ; TESTS ;
@@ -60,10 +81,10 @@ global _start
 _start:
   nop
 
-  mov esi, SAMPLEMSG
+  mov edi, SAMPLEMSG
   call strlen
 
-  cmp ecx, STRLEN
+  cmp edx, STRLEN
 
   jz .pass
 

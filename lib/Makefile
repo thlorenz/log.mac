@@ -1,4 +1,4 @@
-SRCS=$(EXEC).asm ./strlen.asm
+SRCS=$(EXEC).asm ./strlen.asm ./hex2decimal.asm
 OBJS= $(subst .asm,.o, $(SRCS))
 EXECS=$(subst .asm,, $(SRCS))
 
@@ -37,7 +37,7 @@ hex2decimal: hex2decimal.o
 	@ld -m $(LD_EMM) -o $@ $^
 
 help:
-	@echo "Please run make with a task, i.e.: make STRLEN=1"
+	@echo "Please run make with a task, i.e.: make strlen=1"
 
 clean:
 	@rm -f $(OBJS) $(EXECS)

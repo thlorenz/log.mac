@@ -52,15 +52,16 @@ section .text
   log__sys_write DEBUG, DEBUG_LEN
   log__sys_write %1, %2
   log__sys_write CLOSE, CLOSE_LEN
+  log__sys_write LOG__FILE, LOG__FILE_LEN
   log__sys_write NEWLINE, NEWLINE_LEN
 %endmacro
 
 %macro log_debug 1
-  log__push_all esi, ecx
-  mov esi, %1
+  log__push_all edi, edx
+  mov edi, %1
   call strlen
-  log_debug %1, ecx
-  log__pop_all esi, ecx
+  log_debug %1, edx
+  log__pop_all edi, edx
 %endmacro
 
 %macro log_info 2
@@ -71,11 +72,11 @@ section .text
 %endmacro
 
 %macro log_info 1
-  log__push_all esi, ecx
-  mov esi, %1
+  log__push_all edi, edx
+  mov edi, %1
   call strlen
-  log_info %1, ecx
-  log__pop_all esi, ecx
+  log_info %1, edx
+  log__pop_all edi, edx
 %endmacro
 
 %macro log_warn 2
@@ -86,11 +87,11 @@ section .text
 %endmacro
 
 %macro log_warn 1
-  log__push_all esi, ecx
-  mov esi, %1
+  log__push_all edi, edx
+  mov edi, %1
   call strlen
-  log_warn %1, ecx
-  log__pop_all esi, ecx
+  log_warn %1, edx
+  log__pop_all edi, edx
 %endmacro
 
 %macro log_error 2
@@ -101,11 +102,11 @@ section .text
 %endmacro
 
 %macro log_error 1
-  log__push_all esi, ecx
-  mov esi, %1
+  log__push_all edi, edx
+  mov edi, %1
   call strlen
-  log_error %1, ecx
-  log__pop_all esi, ecx
+  log_error %1, edx
+  log__pop_all edi, edx
 %endmacro
 
 %endif

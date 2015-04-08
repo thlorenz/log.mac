@@ -12,6 +12,9 @@ section .text
 _start:
   nop
 
+  log_debug LOGMSG
+  ; need to substract to get line of actual logging call
+
   ; supplying len
   log_debug LOGMSG
   log_info  LOGMSG
@@ -20,7 +23,7 @@ _start:
 
   ; since LOGMSG is 0 terminated we can omit len
   ; (slightly slower though)
-  log_debug LOGMSG, LOGLEN
+;  log_debug LOGMSG, LOGLEN
   log_info  LOGMSG, LOGLEN
   log_warn  LOGMSG, LOGLEN
   log_error LOGMSG, LOGLEN

@@ -3,7 +3,8 @@ EXEC=example
 SRCS=$(EXEC).asm
 LIB_STR_SRCS=$(wildcard ./lib/*.asm)
 
-SRCS+=$(LIB_STR_SRCS)
+# Uncomment the below when testing against ./lib
+# SRCS+=$(LIB_STR_SRCS)
 OBJS=$(subst .asm,.o, $(SRCS))
 
 BITS:=32

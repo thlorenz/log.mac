@@ -3,9 +3,6 @@
 %ifndef _logasm_log_mac_
 %define _logasm_log_mac_
 
-extern strlen
-extern hex2decimal
-
 section .bss
   LINEBUFFER resb 32
 
@@ -26,6 +23,84 @@ section .text
   COLON_LEN     equ $-COLON
   ATLOC:        db " at"
   ATLOC_LEN     equ $-ATLOC
+
+; functions documented, maintained and tested in ./lib
+; included here in order to make this macro file standalone
+; without the need to link extra object files
+
+; ./lib/hex2decimal.asm
+hex2decimal:
+
+  push eax
+  push ebx
+  push ecx
+
+  mov ebx, 10             ; base is 10
+  mov ecx, esi            ; remember end of string
+.convert:
+  xor edx, edx            ; clear edx
+  div ebx                 ; -> quotient in eax, remainder in edx
+
+  add dl, '0'             ; make printable
+  cmp dl, '9'             ; is it a hex digit?
+  jbe .store              ; if not store as is
+
+  add dl, 'A' - '0' - 10  ; adjust hexdigit
+
+.store:
+  dec esi                 ; move back one position
+  mov byte [esi], dl      ; store converted digit
+                          ;   stosb would be faster here, but then we'd need to
+                          ;   rearrange which is in what register which also takes time
+  and eax, eax            ; did division result in 0?
+  jnz .convert            ; if not keep converting
+
+  sub ecx, esi            ; calculate length of string
+  mov edx, ecx            ; sys_write expects length in edx
+
+  pop ecx
+  pop ebx
+  pop eax
+
+  ret
+
+; ./lib/strlen.asm
+strlen:
+
+  push  eax
+  push  ecx
+  push  edi
+
+  xor   eax, eax          ; we are searching for 0
+  mov   ecx, 0000ffffh    ; expecting strings no longer than 65535 bytes
+  cld                     ; search upwards in memory
+
+  repne scasb             ; read starting at edi until we find 0 or run out of bytes
+  jnz    .fail
+
+  mov   edx, 0000fffeh    ; ecx was decremented each time (one too many since it includes 0 terminator)
+  sub   edx, ecx          ; so substracting from original (ecx - 1) gets us the string length
+
+  pop   edi
+  pop   ecx
+  pop   eax
+
+  ret
+
+.fail:
+  mov eax, 4              ; log error
+  mov ebx, 1
+  mov ecx, ENDNOTFOUNDMSG
+  mov edx, ENDNOTFOUNDLEN
+  int 80H
+
+  mov eax, 1              ; exit with code 1
+  mov ebx, 1
+  int 80H
+
+section .data
+  ENDNOTFOUNDMSG: db "FATAL: Unable to find end of string, max size exceeded"
+  ENDNOTFOUNDLEN  equ $-ENDNOTFOUNDMSG
 
 %macro log_text 0
   LOG__FILE:     db " ", __FILE__,0

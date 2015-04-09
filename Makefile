@@ -1,5 +1,5 @@
 # executable is named same as current directory
-EXEC=x
+EXEC=example
 SRCS=$(EXEC).asm
 LIB_STR_SRCS=$(wildcard ./lib/*.asm)
 

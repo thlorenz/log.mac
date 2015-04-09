@@ -27,7 +27,7 @@ section .text
   ATLOC:        db " at"
   ATLOC_LEN     equ $-ATLOC
 
-%macro log_data 0
+%macro log_text 0
   LOG__FILE:     db " ", __FILE__,0
   LOG__FILE_LEN  equ $-LOG__FILE
 %endmacro

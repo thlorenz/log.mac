@@ -28,7 +28,7 @@ section .text
 ; included here in order to make this macro file standalone
 ; without the need to link extra object files
 
-; ./lib/hex2decimal.asm
+; https://github.com/thlorenz/lib.asm#hex2decimal 
 hex2decimal:
 
   push eax
@@ -64,7 +64,7 @@ hex2decimal:
 
   ret
 
-; ./lib/strlen.asm
+; https://github.com/thlorenz/lib.asm#strlen
 strlen:
 
   push  eax

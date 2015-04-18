@@ -2,6 +2,7 @@
 
 %ifndef _logasm_log_mac_
 %define _logasm_log_mac_
+%define stderr 2
 
 section .bss
   LINEBUFFER resb 32
@@ -28,7 +29,7 @@ section .text
 ; included here in order to make this macro file standalone
 ; without the need to link extra object files
 
-; https://github.com/thlorenz/lib.asm#hex2decimal 
+; https://github.com/thlorenz/lib.asm#hex2decimal
 hex2decimal:
 
   push eax
@@ -124,7 +125,7 @@ section .data
 %macro log__sys_write 2 ;(s, len)
   log__push_all eax, ebx, ecx, edx
   mov eax, 4
-  mov ebx, 1
+  mov ebx, stderr
   mov edx, %2
   mov ecx, %1
   int 80H
@@ -145,7 +146,7 @@ section .data
 
   ; write out lineno which is @edx
   mov eax, 4
-  mov ebx, 1
+  mov ebx, stderr
   mov ecx, esi
   int 80H
 

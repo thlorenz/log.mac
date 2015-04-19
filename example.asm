@@ -26,6 +26,12 @@ _start:
   log_warn  WARNMSG
   log_error ERRORMSG
 
+  xor eax, eax
+  mov ah, 10
+  mov al, 20
+  log_reg eax
+  log_error ERRORMSG
+
 .exit:
   mov eax, 1
   mov ebx, 0

@@ -18,6 +18,8 @@ section .text
   ERROR_LEN     equ $-ERROR
   LOCATION:     db 27,"[0;90m"
   LOCATION_LEN  equ $-LOCATION
+  CLOSE:        db 27,"[0m"
+  CLOSE_LEN:    equ $-CLOSE
   NEWLINE       db 10
   NEWLINE_LEN   equ $-NEWLINE
   COLON:        db ":"
@@ -102,7 +104,26 @@ strlen:
 section .data
   ENDNOTFOUNDMSG: db "FATAL: Unable to find end of string, max size exceeded"
   ENDNOTFOUNDLEN  equ $-ENDNOTFOUNDMSG
+  reg_label:
+    .exx:     db "exx: "
+    .exx_len  equ $-.exx
+    .xx:      db " xx: "
+    .xx_len   equ $-.xx
+    .xh:      db " xh: "
+    .xh_len   equ $-.xh
+    .xl:      db " xl: "
+    .xl_len   equ $-.xl
+    .close    db 10
+    .close_len equ $-.close
 
+section .bss
+  reg:
+  .exx: resb 10 ; largest 32-bit int is 2,147,483,647 (10 digits)
+  .xx:  resb  7 ; largest 16-bit int is 65,535 (7 digits)
+  .xh:  resb  3 ; largest  8-bit int is 255 (3 digits)
+  .xl:  resb  3
+
+section .text
 %macro log_text 0
   LOG__FILE:     db " ", __FILE__,0
   LOG__FILE_LEN  equ $-LOG__FILE
@@ -150,6 +171,7 @@ section .data
   mov ecx, esi
   int 80H
 
+  log__sys_write CLOSE, CLOSE_LEN     ; close color
   log__pop_all eax, ebx, ecx, edx, esi
 %endmacro
 
@@ -158,7 +180,6 @@ section .data
   log__sys_write %1, %2
   log__location
   log__sys_write NEWLINE, NEWLINE_LEN
-
 %endmacro
 
 %macro log_debug 1
@@ -212,6 +233,43 @@ section .data
   call strlen
   log_error %1, edx
   log__pop_all edi, edx
+%endmacro
+
+%macro log_reg 1
+  log__push_all eax, ecx, edx, esi
+
+  mov   ecx, %1
+
+  log__sys_write reg_label.exx, reg_label.exx_len
+  mov   eax, ecx
+  mov   esi, reg.exx + 10
+  call  hex2decimal
+  log__sys_write esi, eax
+
+  log__sys_write reg_label.xx, reg_label.xx_len
+  mov   eax, ecx
+  and   eax, 0x0000ffff       ; isolate ax
+  mov   esi, reg.xx + 7
+  call  hex2decimal
+  log__sys_write esi, eax
+
+  log__sys_write reg_label.xh, reg_label.xh_len
+  mov   eax, ecx
+  shr   eax, 8                 ; isolate ah
+  mov   esi, reg.xh + 3
+  call  hex2decimal
+  log__sys_write esi, eax
+
+  log__sys_write reg_label.xl, reg_label.xl_len
+  mov   eax, ecx
+  and   eax, 00ffh             ; isolate al
+  mov   esi, reg.xl + 3
+  call  hex2decimal
+  log__sys_write esi, eax
+
+  log__sys_write reg_label.close, reg_label.close_len       ; new line
+
+  log__pop_all eax, ecx, edx, esi
 %endmacro
 
 %endif

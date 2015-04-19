@@ -8,24 +8,24 @@ section .bss
   LINEBUFFER resb 32
 
 section .text
-  DEBUG:        db 27,"[0;34mDEBUG ",27,"[0m"
-  DEBUG_LEN     equ $-DEBUG
-  INFO:         db 27,"[0;32mINFO  ",27,"[0m"
-  INFO_LEN      equ $-INFO
-  WARN:         db 27,"[0;91mWARN  ",27,"[0m"
-  WARN_LEN      equ $-WARN
-  ERROR:        db 27,"[0;31mERROR ",27,"[0m"
-  ERROR_LEN     equ $-ERROR
-  LOCATION:     db 27,"[0;90m"
-  LOCATION_LEN  equ $-LOCATION
-  CLOSE:        db 27,"[0m"
-  CLOSE_LEN:    equ $-CLOSE
-  NEWLINE       db 10
-  NEWLINE_LEN   equ $-NEWLINE
-  COLON:        db ":"
-  COLON_LEN     equ $-COLON
-  ATLOC:        db " at"
-  ATLOC_LEN     equ $-ATLOC
+  log__debug_msg    : db 27,"[0;34mDEBUG ",27,"[0m"
+    .len            : equ $-log__debug_msg
+  log__info_msg     : db 27,"[0;32mINFO  ",27,"[0m"
+    .len            : equ $-log__info_msg
+  log__warn_msg     : db 27,"[0;91mWARN  ",27,"[0m"
+    .len            : equ $-log__warn_msg
+  log__error_msg    : db 27,"[0;31mERROR ",27,"[0m"
+    .len            : equ $-log__error_msg
+  log__location_msg : db 27,"[0;90m"
+    .len            : equ $-log__location_msg
+  log__close_msg    : db 27,"[0m"
+    .len            : equ $-log__close_msg
+  log__newline_msg  : db 10
+    .len            : equ $-log__newline_msg
+  log__colon_msg    : db ": "
+    .len            : equ $-log__colon_msg
+  log__atloc_msg    : db " at"
+    .len            : equ $-log__atloc_msg
 
 ; functions documented, maintained and tested in ./lib
 ; included here in order to make this macro file standalone
@@ -114,7 +114,7 @@ section .data
     .xl:      db " xl: "
     .xl_len   equ $-.xl
     .close    db 10
-    .close_len equ $-.close
+    .close.len equ $-.close
 
 section .bss
   reg:
@@ -156,10 +156,10 @@ section .text
 %macro log__location 0
   log__push_all eax, ebx, ecx, edx, esi
 
-  log__sys_write LOCATION, LOCATION_LEN
-  log__sys_write ATLOC, ATLOC_LEN
+  log__sys_write log__location_msg, log__location_msg.len
+  log__sys_write log__atloc_msg, log__atloc_msg.len
   log__sys_write LOG__FILE, LOG__FILE_LEN
-  log__sys_write COLON, COLON_LEN
+  log__sys_write log__colon_msg, log__colon_msg.len
 
   mov eax, __LINE__
   mov esi, LINEBUFFER + 32
@@ -171,15 +171,15 @@ section .text
   mov ecx, esi
   int 80H
 
-  log__sys_write CLOSE, CLOSE_LEN     ; close color
+  log__sys_write log__close_msg, log__close_msg.len     ; close color
   log__pop_all eax, ebx, ecx, edx, esi
 %endmacro
 
 %macro log_debug 2
-  log__sys_write DEBUG, DEBUG_LEN
+  log__sys_write log__debug_msg, log__debug_msg.len
   log__sys_write %1, %2
   log__location
-  log__sys_write NEWLINE, NEWLINE_LEN
+  log__sys_write log__newline_msg, log__newline_msg.len
 %endmacro
 
 %macro log_debug 1
@@ -191,10 +191,10 @@ section .text
 %endmacro
 
 %macro log_info 2
-  log__sys_write INFO, INFO_LEN
+  log__sys_write log__info_msg, log__info_msg.len
   log__sys_write %1, %2
   log__location
-  log__sys_write NEWLINE, NEWLINE_LEN
+  log__sys_write log__newline_msg, log__newline_msg.len
 %endmacro
 
 %macro log_info 1
@@ -206,10 +206,10 @@ section .text
 %endmacro
 
 %macro log_warn 2
-  log__sys_write WARN, WARN_LEN
+  log__sys_write log__warn_msg, log__warn_msg.len
   log__sys_write %1, %2
   log__location
-  log__sys_write NEWLINE, NEWLINE_LEN
+  log__sys_write log__newline_msg, log__newline_msg.len
 %endmacro
 
 %macro log_warn 1
@@ -221,10 +221,10 @@ section .text
 %endmacro
 
 %macro log_error 2
-  log__sys_write ERROR, ERROR_LEN
+  log__sys_write log__error_msg, log__error_msg.len
   log__sys_write %1, %2
   log__location
-  log__sys_write NEWLINE, NEWLINE_LEN
+  log__sys_write log__newline_msg, log__newline_msg.len
 %endmacro
 
 %macro log_error 1
@@ -267,7 +267,7 @@ section .text
   call  hex2decimal
   log__sys_write esi, eax
 
-  log__sys_write reg_label.close, reg_label.close_len       ; new line
+  log__sys_write reg_label.close, reg_label.close.len       ; new line
 
   log__pop_all eax, ecx, edx, esi
 %endmacro

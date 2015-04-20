@@ -7,7 +7,17 @@
 section .bss
   LINEBUFFER resb 32
 
-section .text
+section .data
+  log__eax_msg: db "eax: " ; all len: 5
+  log__ebx_msg: db "ebx: "
+  log__ecx_msg: db "ecx: "
+  log__edx_msg: db "edx: "
+  log__esi_msg: db "esi: "
+  log__edi_msg: db "edi: "
+  log__ebp_msg: db "ebp: "
+  log__esp_msg: db "esp: "
+  log__eip_msg: db "eip: "
+
   log__debug_msg    : db 27,"[0;34mDEBUG ",27,"[0m"
     .len            : equ $-log__debug_msg
   log__info_msg     : db 27,"[0;32mINFO  ",27,"[0m"
@@ -22,53 +32,157 @@ section .text
     .len            : equ $-log__close_msg
   log__newline_msg  : db 10
     .len            : equ $-log__newline_msg
-  log__colon_msg    : db ": "
+  log__colon_msg    : db ":"
     .len            : equ $-log__colon_msg
   log__atloc_msg    : db " at"
     .len            : equ $-log__atloc_msg
 
-; functions documented, maintained and tested in ./lib
+section .text
+; functions documented, maintained and tested in https://github.com/thlorenz/lib.asm
 ; included here in order to make this macro file standalone
 ; without the need to link extra object files
 
 ; https://github.com/thlorenz/lib.asm#hex2decimal
-hex2decimal:
+log__hex2decimal:
 
-  push eax
-  push ebx
-  push ecx
+  push  ebx
+  push  ecx
+  push  edx
 
-  mov ebx, 10             ; base is 10
-  mov ecx, esi            ; remember end of string
+  mov   ebx, 10             ; base is 10
+  mov   ecx, esi            ; remember end of string
 .convert:
-  xor edx, edx            ; clear edx
-  div ebx                 ; -> quotient in eax, remainder in edx
+  xor   edx, edx            ; clear edx
+  div   ebx                 ; -> quotient in eax, remainder in edx
 
-  add dl, '0'             ; make printable
-  cmp dl, '9'             ; is it a hex digit?
-  jbe .store              ; if not store as is
+  add   dl, '0'             ; make printable
+  cmp   dl, '9'             ; is it a hex digit?
+  jbe   .store              ; if not store as is
 
-  add dl, 'A' - '0' - 10  ; adjust hexdigit
+  add   dl, 'A' - '0' - 10  ; adjust hexdigit
 
 .store:
-  dec esi                 ; move back one position
-  mov byte [esi], dl      ; store converted digit
-                          ;   stosb would be faster here, but then we'd need to
-                          ;   rearrange which is in what register which also takes time
-  and eax, eax            ; did division result in 0?
-  jnz .convert            ; if not keep converting
+  dec   esi                 ; move back one position
+  mov   byte [esi], dl      ; store converted digit
+                            ;   stosb would be faster here, but then we'd need to
+                            ;   rearrange which is in what register which also takes time
+  or    eax, eax            ; did division result in 0?
+  jnz   .convert            ; if not keep converting
 
-  sub ecx, esi            ; calculate length of string
-  mov edx, ecx            ; sys_write expects length in edx
+  sub   ecx, esi            ; calculate length of string
+  mov   eax, ecx
 
-  pop ecx
-  pop ebx
-  pop eax
+  pop   edx
+  pop   ecx
+  pop   ebx
 
   ret
 
+; https://github.com/thlorenz/lib.asm#dword2str
+section .data
+  log__hexstr_msg_start: db "0x"
+  log__hexstr_msg: db " 00 00 00 00"
+    .len: equ $-log__hexstr_msg
+  log__digits: db "0123456789abcdef"
+
+section .text
+log__dword2str:
+  push  eax
+  push  ebx
+
+  mov   ebx, eax                          ; copy input
+  mov   esi, 3                            ; start writing at most right slot
+
+  xor   eax, eax
+
+.process_bx:
+  mov   al, bl                            ; lowest nyble          00 0f
+  and   al, 0fh                           ; mask out high nybble
+  mov   al, byte [ log__digits + eax ]
+  mov   byte [ log__hexstr_msg + 3 * esi + 2 ], al
+
+  mov   al, bl                            ; second lowest nybble  00 f0
+  shr   al, 4
+  mov   al, byte [ log__digits + eax ]
+  mov   byte [ log__hexstr_msg + 3 * esi + 1 ], al
+
+  dec   esi                               ; move over one slot for writing
+
+  mov   al, bh                            ; third lowest nyble    0f 00
+  and   al, 0fh                           ; mask out high nybble
+  mov   al, byte [ log__digits + eax ]
+  mov   byte [ log__hexstr_msg + 3 * esi + 2 ], al
+
+  mov   al, bh                            ; fourth lowest nyble   f0 00
+  shr   al, 4
+  mov   al, byte [ log__digits + eax ]
+  mov   byte [ log__hexstr_msg + 3 * esi + 1 ], al
+
+  or    esi, 0
+  jz   .done
+                                          ; repeat same for upper upper 16-bits
+  dec   esi                               ; start at 3rd slot from right
+  shr   ebx, 16                           ; push upper 16 bits of ebx into bx
+  jmp   .process_bx
+
+.done:
+  mov   esi, log__hexstr_msg_start
+
+  pop  ebx
+  pop  eax
+
+  ret
+
+; https://github.com/thlorenz/lib.asm#dword2decimal
+log__dword2decimal:
+  push  ebx
+
+  mov   ebx, eax
+
+  lea   esi, [ log__reg_buffer.colons + 3 ]  ; start writing at end of available buffer
+                                             ; hex2decimal will write before esi and update it for us
+
+  and   eax, 0x000000ff                      ; al
+  call  log__hex2decimal                     ; esi now at start of string we just stored
+
+  dec   esi
+  mov   byte [esi], ':'
+
+  mov   eax, ebx                            ; ah
+  shr   eax, 8
+  and   eax, 0x000000ff
+  call  log__hex2decimal
+
+  dec   esi
+  mov   byte [esi], ':'
+
+  mov   eax, ebx                            ; ax
+  and   eax, 0x0000ffff
+  call  log__hex2decimal
+
+  dec   esi
+  mov   byte [ esi ], ':'
+
+  mov   eax, ebx                            ; eax
+  call  log__hex2decimal
+
+  lea   eax, [ log__reg_buffer.colons + 3 ] ; calculate length of string (including last char)
+  sub   eax, esi
+
+  pop  ebx
+  ret
+
+section .bss
+  log__reg_buffer:
+  .exx: resb 10 ; largest 32-bit int is 2,147,483,647 (10 digits)
+  .xx:  resb  7 ; largest 16-bit int is 65,535 (7 digits)
+  .xh:  resb  3 ; largest  8-bit int is 255 (3 digits)
+  .xl:  resb  3
+  .colons:  resb  3 ; each : takes one byte
+section .text
+
 ; https://github.com/thlorenz/lib.asm#strlen
-strlen:
+log__strlen:
 
   push  eax
   push  ecx
@@ -101,27 +215,14 @@ strlen:
   mov ebx, 1
   int 80H
 
+; puts eip at time of call into eax
+log__get_eip:
+  mov eax, [ esp ]        ; eip is now on stack
+  ret
+
 section .data
   ENDNOTFOUNDMSG: db "FATAL: Unable to find end of string, max size exceeded"
   ENDNOTFOUNDLEN  equ $-ENDNOTFOUNDMSG
-  reg_label:
-    .exx:     db "exx: "
-    .exx_len  equ $-.exx
-    .xx:      db " xx: "
-    .xx_len   equ $-.xx
-    .xh:      db " xh: "
-    .xh_len   equ $-.xh
-    .xl:      db " xl: "
-    .xl_len   equ $-.xl
-    .close    db 10
-    .close.len equ $-.close
-
-section .bss
-  reg:
-  .exx: resb 10 ; largest 32-bit int is 2,147,483,647 (10 digits)
-  .xx:  resb  7 ; largest 16-bit int is 65,535 (7 digits)
-  .xh:  resb  3 ; largest  8-bit int is 255 (3 digits)
-  .xl:  resb  3
 
 section .text
 %macro log_text 0
@@ -145,10 +246,13 @@ section .text
 
 %macro log__sys_write 2 ;(s, len)
   log__push_all eax, ebx, ecx, edx
+  push  %2        ; this push/pop maneuver is only way
+  push  %1        ; to avoid clashes
+
   mov eax, 4
   mov ebx, stderr
-  mov edx, %2
-  mov ecx, %1
+  pop ecx
+  pop edx
   int 80H
   log__pop_all eax, ebx, ecx, edx
 %endmacro
@@ -163,9 +267,10 @@ section .text
 
   mov eax, __LINE__
   mov esi, LINEBUFFER + 32
-  call hex2decimal
+  call log__hex2decimal
 
   ; write out lineno which is @edx
+  mov edx, eax
   mov eax, 4
   mov ebx, stderr
   mov ecx, esi
@@ -185,7 +290,7 @@ section .text
 %macro log_debug 1
   log__push_all edi, edx
   mov edi, %1
-  call strlen
+  call log__strlen
   log_debug %1, edx
   log__pop_all edi, edx
 %endmacro
@@ -200,7 +305,7 @@ section .text
 %macro log_info 1
   log__push_all edi, edx
   mov edi, %1
-  call strlen
+  call log__strlen
   log_info %1, edx
   log__pop_all edi, edx
 %endmacro
@@ -215,7 +320,7 @@ section .text
 %macro log_warn 1
   log__push_all edi, edx
   mov edi, %1
-  call strlen
+  call log__strlen
   log_warn %1, edx
   log__pop_all edi, edx
 %endmacro
@@ -230,46 +335,89 @@ section .text
 %macro log_error 1
   log__push_all edi, edx
   mov edi, %1
-  call strlen
+  call log__strlen
   log_error %1, edx
   log__pop_all edi, edx
 %endmacro
 
-%macro log_reg 1
-  log__push_all eax, ecx, edx, esi
+; log registers in hex
+%macro log__reg 2 ; (label, reg)
+  log__push_all eax, esi
+  log__sys_write log__debug_msg, log__debug_msg.len
+  log__sys_write %1, 5
 
-  mov   ecx, %1
+  mov   eax, %2
+  call  log__dword2str
+  log__sys_write esi, 14
+  log__location
+  log__sys_write log__newline_msg, log__newline_msg.len
+  log__pop_all eax, esi
+%endmacro
+%macro log_eax 0
+  log__reg log__eax_msg, eax
+%endmacro
+%macro log_ebx 0
+  log__reg log__ebx_msg, ebx
+%endmacro
+%macro log_ecx 0
+  log__reg log__ecx_msg, ecx
+%endmacro
+%macro log_edx 0
+  log__reg log__edx_msg, edx
+%endmacro
+%macro log_edi 0
+  log__reg log__edi_msg, edi
+%endmacro
+%macro log_esi 0
+  log__reg log__esi_msg, esi
+%endmacro
+%macro log_ebp 0
+  log__reg log__ebp_msg, ebp
+%endmacro
+%macro log_esp 0
+  log__reg log__esp_msg, esp
+%endmacro
+%macro log_eip 0
+  push  eax
+  call log__get_eip
+  log__reg log__eip_msg, eax
+  pop   eax
+%endmacro
 
-  log__sys_write reg_label.exx, reg_label.exx_len
-  mov   eax, ecx
-  mov   esi, reg.exx + 10
-  call  hex2decimal
+%macro log__reg_dec 2 ; (label, reg)
+  log__push_all eax, esi
+
+  log__sys_write log__debug_msg, log__debug_msg.len
+  log__sys_write %1, 5
+
+  mov   eax, %2
+
+  call log__dword2decimal
   log__sys_write esi, eax
 
-  log__sys_write reg_label.xx, reg_label.xx_len
-  mov   eax, ecx
-  and   eax, 0x0000ffff       ; isolate ax
-  mov   esi, reg.xx + 7
-  call  hex2decimal
-  log__sys_write esi, eax
+  log__location
+  log__sys_write log__newline_msg, log__newline_msg.len
 
-  log__sys_write reg_label.xh, reg_label.xh_len
-  mov   eax, ecx
-  shr   eax, 8                 ; isolate ah
-  mov   esi, reg.xh + 3
-  call  hex2decimal
-  log__sys_write esi, eax
+  log__pop_all eax, esi
+%endmacro
 
-  log__sys_write reg_label.xl, reg_label.xl_len
-  mov   eax, ecx
-  and   eax, 00ffh             ; isolate al
-  mov   esi, reg.xl + 3
-  call  hex2decimal
-  log__sys_write esi, eax
-
-  log__sys_write reg_label.close, reg_label.close.len       ; new line
-
-  log__pop_all eax, ecx, edx, esi
+%macro log_eax_dec 0
+  log__reg_dec log__eax_msg, eax
+%endmacro
+%macro log_ebx_dec 0
+  log__reg_dec log__ebx_msg, ebx
+%endmacro
+%macro log_ecx_dec 0
+  log__reg_dec log__ecx_msg, ecx
+%endmacro
+%macro log_edx_dec 0
+  log__reg_dec log__edx_msg, edx
+%endmacro
+%macro log_edi_dec 0
+  log__reg_dec log__edi_msg, edi
+%endmacro
+%macro log_esi_dec 0
+  log__reg_dec log__esi_msg, esi
 %endmacro
 
 %endif

@@ -10,12 +10,28 @@ section .text
 
 _start:
   ; supplying length
-  log_debug DEBUGMSG, DEBUGLEN
+  log_debug debug, debug.len
 
-  ; as long as msg is null terminated we can omit length (slightly slower though)
-  log_info  INFOMSG
-  log_warn  WARNMSG
-  log_error ERRORMSG
+  ; as long as  is null terminated we can omit length (slightly slower though)
+  log_info  info
+  log_warn  warn
+  log_error error
+
+  log_info  registers
+  xor eax, eax
+  mov ah, 10
+  mov al, 20
+
+  log_eax
+  log_info dec_format
+  log_eax_dec
+
+  log_info dec_impl
+  mov ebx, 0xbada5501
+  log_ebx
+  log_ebx_dec
+  log_esp
+  log_eip   ; yes you can log the instruction pointer too :)
 ```
 
 ![assets/screenshot.png](assets/screenshot.png)
